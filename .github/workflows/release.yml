@@ -4,11 +4,13 @@ permissions:
 on:
   push:
     branches:
-      - release/*
+      - "release/*"
+    tags:
+      - "v*"
   workflow_dispatch:
 jobs:
   release:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24
     steps:
       - name: Install Dependencies
         run: sudo apt update && sudo apt install cmake clang ninja
@@ -32,6 +34,7 @@ jobs:
           draft: false
           prerelease: false
       - name: Collect Package Information
+        id: packages
         run: |
           echo "rpm_path=$(ls packages/*.rpm)" >> $GITHUB_OUTPUT
           echo "rpm_name=$(ls packages/*.rpm | basename)" >> $GITHUB_OUTPUT
@@ -40,18 +43,20 @@ jobs:
           echo "deb_name=$(ls packages/*.deb | basename)" >> $GITHUB_OUTPUT
           echo "deb_version=$(ls packages/*.deb | cut -d '-' -f2)" >> $GITHUB_OUTPUT
       - name: Update RPM Package
-        uses: actions/upload-release-artifact@v1
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: "${{ secrets.github_token }}"
         with:
           upload_url: "${{ steps.create-release.outputs.upload_url }}"
-          asset_path: "${{ outputs.rpm_path }}"
-          asset_name: "${{ outputs.rpm_name }}"
+          asset_path: "${{ steps.packages.outputs.rpm_path }}"
+          asset_name: "${{ steps.packages.outputs.rpm_name }}"
           asset_content_type: "application/x-rpm"
       - name: Update Debian Package
-        uses: actions/upload-release-artifact@v1
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: "${{ secrets.github_token }}"
         with:
           upload_url: "${{ steps.create-release.outputs.upload_url }}"
-          asset_path: "${{ outputs.deb_path }}"
+          asset_path: "${{ steps.packages.outputs.deb_path }}"
+          asset_name: "${{ steps.packages.outputs.deb_name }}"
+          asset_content_type: "application/deb"
