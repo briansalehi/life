@@ -1,0 +1,57 @@
+name: Release
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - release/*
+    workflow_dispatch:
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install Dependencies
+        run: sudo apt update && sudo apt install cmake clang ninja
+      - name: Checkout
+        uses: actions/checkout@4
+      - name: Configure
+        run: cmake -G Ninja -S life -B build-release -D CMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build-release --config Release --parallel
+      - name: Create Packages
+        run: cpack -B packages -G "DEB;RPM" --config build-release/CPackConfig.cmake
+      - name: Create Release
+        uses: actions/create-release@v1
+        id: create-release
+        env:
+          GITHUB_TOKEN: "${{ secrets.github_token }}"
+        with:
+          tag_name: "${{ github.ref_name }}"
+          release_name: "Release ${{ github.ref_name }}"
+          body: "Release packages for ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+      - name: Collect Package Information
+        run: |
+          echo "rpm_path=$(ls packages/*.rpm)" >> $GITHUB_OUTPUT
+          echo "rpm_name=$(ls packages/*.rpm | basename)" >> $GITHUB_OUTPUT
+          echo "rpm_version=$(ls packages/*.rpm | cut -d '-' -f2)" >> $GITHUB_OUTPUT
+          echo "deb_path=$(ls packages/*.deb)" >> $GITHUB_OUTPUT
+          echo "deb_name=$(ls packages/*.deb | basename)" >> $GITHUB_OUTPUT
+          echo "deb_version=$(ls packages/*.deb | cut -d '-' -f2)" >> $GITHUB_OUTPUT
+      - name: Update RPM Package
+        uses: actions/upload-release-artifact@v1
+        env:
+          GITHUB_TOKEN: "${{ secrets.github_token }}"
+        with:
+          upload_url: "${{ steps.create-release.outputs.upload_url }}"
+          asset_path: "${{ outputs.rpm_path }}"
+          asset_name: "${{ outputs.rpm_name }}"
+          asset_content_type: "application/x-rpm"
+      - name: Update Debian Package
+        uses: actions/upload-release-artifact@v1
+        env:
+          GITHUB_TOKEN: "${{ secrets.github_token }}"
+        with:
+          upload_url: "${{ steps.create-release.outputs.upload_url }}"
+          asset_path: "${{ outputs.deb_path }}"

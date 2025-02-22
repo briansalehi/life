@@ -1,0 +1,14 @@
+.idea/
+*build*/
+html/
+pdf/
+*.tmp
+*.o
+*.a
+*.so
+*.zip
+*.deb
+*.rpm
+*.tar*
+*.gz
+*.bzip2
